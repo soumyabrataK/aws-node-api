@@ -1,0 +1,50 @@
+service: aws-node-api
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-2
+  memorySize: 128
+
+functions:
+  api:
+    handler: handler.api
+    memorySize: 128
+    timeout: 600
+    events:
+      - http:
+          path: api/{path}
+          method: any
+          cors: true # cross origin resource sharing
+      # - http:
+      #     path: api/{path}/{path2}
+      #     method: any
+      #     cors: true
+      # - http:
+      #     path: api/{path}/{path2}/{path3}
+      #     method: any
+      #     cors: true
+  userlogin:
+    handler: profile.userlogin
+    memorySize: 128
+    timeout: 600
+    events:
+      - http:
+          path: userlogin
+          method: any
+          cors: true
+
+  firemail:
+    handler: sendemail.firemail
+    memorySize: 128
+    timeout: 30
+    events:
+      - http:
+          path: firemail
+          method: any
+          cors: true
+
+plugins:
+  - serverless-offline

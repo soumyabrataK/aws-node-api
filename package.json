@@ -1,0 +1,27 @@
+{
+  "name": "aws-node-api",
+  "version": "1.0.0",
+  "description": "aws-node-api",
+  "main": "handler.js",
+  "scripts": {
+    "test": "test",
+    "startwatch": "nodemon --exec serverless offline"
+  },
+  "author": "soumya",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^3.2.4",
+    "aws-sdk": "^2.1231.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.0.3",
+    "jsonwebtoken": "^8.5.1",
+    "moment": "^2.29.4",
+    "mongoose": "^6.6.5",
+    "nodemailer": "^6.8.0",
+    "nodemon": "^2.0.20",
+    "serverless": "^3.22.0"
+  },
+  "devDependencies": {
+    "serverless-offline": "^11.1.0"
+  }
+}
