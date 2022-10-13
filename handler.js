@@ -13,6 +13,7 @@ const events = require("events"); // Node.js has an event-driven architecture wh
 let nodeMailer = require("nodemailer"); //Nodemailer is a module for Node.js applications to allow easy as cake email sending.
 const connectToDB = require("./connectToDB");
 const blogs = require("./collections/blogs");
+const portfolios = require("./collections/portfolio");
 const { clone } = require("./helper");
 const moment = require("moment/moment");
 const get_quote = require("./collections/get_quote");
@@ -53,11 +54,27 @@ module.exports.api = (event, context, callback) => {
     case "get-qoute":
       getQoute(event, context, callback);
       break;
+    case "bloglisting":
+      bloglisting(event, context, callback);
+      break;
+    case "bloglistingcount":
+      bloglistingcount(event, context, callback);
+      break;
+    case "createUpdateportfolio":
+      createUpdateportfolio(event, context, callback);
+      break;
+    case "portfoliolistingcount":
+      portfoliolistingcount(event, context, callback);
+      break;
+    case "portfoliolisting":
+      portfoliolisting(event, context, callback);
+      break;
   }
 };
 
 ////////////////////////////////////////////////// Create Or Update BLog /////////////////////////////////////////
 async function createUpdateBlog(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
   try {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
@@ -162,4 +179,293 @@ function createRegistration(data) {
       resolve({ status: "error", results: err });
     }
   });
+}
+
+
+//--------------------------blog listing--------------------------//
+async function bloglisting(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("bloglisting startedddddddddd");
+  let req = JSON.parse(event.body);
+  console.log("req----------------->", req);
+  //-----------------token verification---------------------------//
+  // let flag = false;
+  // let flag = await verifytoken(req.email,req.token);
+  // console.log('flag----------------->', flag);
+  // if(!flag){
+  //   return callback(null, {
+  //     statusCode: 500,
+  //     headers: headers,
+  //     body: "Access Denied",
+  //   })
+  // }
+  //---------------------------end---------------------------------//
+  delete req.searchcondition.token;
+  let sortval = {};
+  let cond = {};
+  let limit = {};
+  let skip = {};//===================================>>>>>>>>>>>>for search(complete)
+  delete req.searchcondition.formId;// to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("cond1", cond);
+  if (req.sort != undefined && req.sort != null && req.sort.type == "asc") {
+    req.sort.type = 1;
+    sortval[req.sort.field] = req.sort.type;
+  }
+  else if (req.sort != undefined && req.sort != null && req.sort.type == "desc") {
+    req.sort.type = -1;
+    sortval[req.sort.field] = req.sort.type;
+  }
+  sortval.updated_datetime = -1;
+  if (req.condition !== null && req.condition !== undefined) limit = req.condition.limit;
+  if (req.condition !== null && req.condition !== undefined) skip = req.condition.skip;
+  console.log('cond-------------------Date222++++', cond, sortval);
+  connectToDB().then(() => {
+    blogs
+      .find(cond)
+      .sort(sortval)
+      .limit(limit)
+      .skip(skip)
+      .lean()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            results: {
+              res: response
+            },
+            relation: req.relation ? req.relation : undefined,
+            reqbody: req
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
+}
+//--------------------------------blog listcount----------------------//
+function bloglistingcount(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("blogcount startedddddddddd");
+  let req = JSON.parse(event.body);
+  let cond = {};
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("req=======", req);
+  connectToDB().then(() => {
+    blogs
+      .find(cond)
+      .count()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            count: response,
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
+}
+
+//--------------------------Portfolio listing--------------------------//
+async function portfoliolisting(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("Portfoliolisting startedddddddddd");
+  let req = JSON.parse(event.body);
+  console.log("req----------------->", req);
+  //-----------------token verification---------------------------//
+  // let flag = false;
+  // let flag = await verifytoken(req.email,req.token);
+  // console.log('flag----------------->', flag);
+  // if(!flag){
+  //   return callback(null, {
+  //     statusCode: 500,
+  //     headers: headers,
+  //     body: "Access Denied",
+  //   })
+  // }
+  //---------------------------end---------------------------------//
+  delete req.searchcondition.token;
+  let sortval = {};
+  let cond = {};
+  let limit = {};
+  let skip = {};//===================================>>>>>>>>>>>>for search(complete)
+  delete req.searchcondition.formId;// to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("cond1", cond);
+  if (req.sort != undefined && req.sort != null && req.sort.type == "asc") {
+    req.sort.type = 1;
+    sortval[req.sort.field] = req.sort.type;
+  }
+  else if (req.sort != undefined && req.sort != null && req.sort.type == "desc") {
+    req.sort.type = -1;
+    sortval[req.sort.field] = req.sort.type;
+  }
+  sortval.updated_datetime = -1;
+  if (req.condition !== null && req.condition !== undefined) limit = req.condition.limit;
+  if (req.condition !== null && req.condition !== undefined) skip = req.condition.skip;
+  console.log('cond-------------------Date222++++', cond, sortval);
+  connectToDB().then(() => {
+    portfolios
+      .find(cond)
+      .sort(sortval)
+      .limit(limit)
+      .skip(skip)
+      .lean()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            results: {
+              res: response
+            },
+            relation: req.relation ? req.relation : undefined,
+            reqbody: req
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
+}
+//--------------------------------Portfolio listcount----------------------//
+function portfoliolistingcount(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("Portfoliocount startedddddddddd");
+  let req = JSON.parse(event.body);
+  let cond = {};
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("req=======", req);
+  connectToDB().then(() => {
+    portfolios
+      .find(cond)
+      .count()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            count: response,
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
+}
+////////////////////////////////////////////////// Create Or Update Portfolio /////////////////////////////////////////
+async function createUpdateportfolio(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    /////////////////////////////// DB Connection ///////////////////////////////////
+    await connectToDB();
+    const { data } = JSON.parse(event.body);
+    console.log('portfolio---------->started',data);
+    let response;
+
+    ///////////////////////////// Data Modification for Creation or Updation /////////////////////////
+    const updationData = clone(data);
+    if (updationData._id) delete updationData._id;
+    console.log('data==========>', data, "<=====updationData=======>", updationData);
+
+    ///////////////////////// DB Operation //////////////////////////////////////////////
+    const existing = await portfolios.findById(data._id, { _id: 1 });
+    // console.log('existing=======>', existing);
+
+    if (!existing) {
+      ////////////////////////////////////////// Create Operation ///////////////////////////////////
+      const createResponse = await portfolios.create(updationData);
+      // console.log('createResponse===>', createResponse)
+      const { _id } = createResponse;
+      if (_id) response = { operation: "create", _id: _id };
+    } else {
+      /////////////////////////////////////// Update Operation ////////////////////////////////////
+      const updateResponese = await portfolios.updateOne(
+        { _id: mongoose.Types.ObjectId(data._id) },
+        { $set: { ...updationData, updated_datetime: moment().valueOf() } }
+      );
+      // console.log('updateResponese==========>', updateResponese);
+      const { acknowledged, modifiedCount, matchedCount } = updateResponese;
+      if (acknowledged === true && matchedCount > 0 && modifiedCount > 0)
+        response = { operation: "update", _id: data._id };
+    }
+
+    ////////////////////////// Error Response ///////////////////////////////////////////
+    if (response === undefined)
+      response = { operation: "failed", message: "Something Went Wrong" };
+
+    ///////////////////////////////// Response Send /////////////////////////////////////////
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: response,
+      }),
+    });
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
 }
