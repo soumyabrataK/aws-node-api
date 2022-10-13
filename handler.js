@@ -1,6 +1,6 @@
-'use strict';
+"use strict";
 
-require("dotenv").config({ path: ".env" });
+require("dotenv").config({ path: "secrets.json" });
 // already installed in code
 const AWS = require("aws-sdk");
 let mongoose = require("mongoose"); // this code is used for connecting to mongoose db.
@@ -15,15 +15,13 @@ const connectToDB = require("./connectToDB");
 const blogs = require("./collections/blogs");
 const { clone } = require("./helper");
 const moment = require("moment/moment");
-
-
-
-
+const get_quote = require("./collections/get_quote");
 
 let headers = {
   // headers let the client and the server pass additional information with an HTTP request or response.
   "Access-Control-Allow-Origin": "*", // The Access-Control-Allow-Origin header included in the response from one website to a request originating from another website, and identifies the permitted origin of the request
-  "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token", //??
+  "Access-Control-Allow-Headers":
+    "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token", //??
   "Access-Control-Allow-Credentials": true, // ??
   "Content-Type": "application/json",
 };
@@ -45,7 +43,6 @@ function decrypt(text) {
   return dec;
 }
 
-
 module.exports.api = (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
   console.log("endpoint hitted", event.pathParameters);
@@ -53,10 +50,11 @@ module.exports.api = (event, context, callback) => {
     case "create-edit-blog":
       createUpdateBlog(event, context, callback);
       break;
-
+    case "get-qoute":
+      getQoute(event, context, callback);
+      break;
   }
-}
-
+};
 
 ////////////////////////////////////////////////// Create Or Update BLog /////////////////////////////////////////
 async function createUpdateBlog(event, context, callback) {
@@ -80,28 +78,32 @@ async function createUpdateBlog(event, context, callback) {
       const createResponse = await blogs.create(updationData);
       // console.log('createResponse===>', createResponse)
       const { _id } = createResponse;
-      if (_id) response = { operation: 'create', _id: _id };
+      if (_id) response = { operation: "create", _id: _id };
     } else {
       /////////////////////////////////////// Update Operation ////////////////////////////////////
-      const updateResponese = await blogs.updateOne({ _id: mongoose.Types.ObjectId(data._id) }, { $set: { ...updationData, updated_datetime: moment().valueOf() } })
+      const updateResponese = await blogs.updateOne(
+        { _id: mongoose.Types.ObjectId(data._id) },
+        { $set: { ...updationData, updated_datetime: moment().valueOf() } }
+      );
       // console.log('updateResponese==========>', updateResponese);
       const { acknowledged, modifiedCount, matchedCount } = updateResponese;
-      if (acknowledged === true && matchedCount > 0 && modifiedCount > 0) response = { operation: "update", _id: data._id }
+      if (acknowledged === true && matchedCount > 0 && modifiedCount > 0)
+        response = { operation: "update", _id: data._id };
     }
 
     ////////////////////////// Error Response ///////////////////////////////////////////
-    if (response === undefined) response = { operation: "failed", message: "Something Went Wrong" }
+    if (response === undefined)
+      response = { operation: "failed", message: "Something Went Wrong" };
 
     ///////////////////////////////// Response Send /////////////////////////////////////////
     callback(null, {
       headers: headers,
       statusCode: 200,
       body: JSON.stringify({
-        status: 'success',
-        response: response
-      })
-    })
-
+        status: "success",
+        response: response,
+      }),
+    });
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
@@ -109,6 +111,55 @@ async function createUpdateBlog(event, context, callback) {
         "Content-Type": "text/plain",
       },
       body: "Connection problem" + String(error),
-    })
+    });
   }
+}
+
+/////////////////////////////////////////// Get Qoute ///////////////////////////////////////
+async function getQoute(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    const req = JSON.parse(event.body);
+
+    const registration = await createRegistration(req);
+    if (registration.status === "error") throw new Error(registration.results);
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        results: { _id: registration.results._id },
+        message: "Successfully Registered",
+      }),
+    });
+  } catch (error) {
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "error",
+        results: error,
+      }),
+    });
+  }
+}
+
+/////////////////////////////////// Create Registration ////////////////////////////////////
+function createRegistration(data) {
+  return new Promise(async (resolve) => {
+    try {
+      await connectToDB();
+      const dbResponse = await get_quote.create(data);
+      if (!dbResponse._id)
+        throw new Error("Registration Unsuccessful! Please try again");
+
+      resolve({ status: "success", results: dbResponse });
+
+      // console.log("dbResponse======>", dbResponse);
+    } catch (err) {
+      console.log("error======>", err);
+      resolve({ status: "error", results: err });
+    }
+  });
 }
