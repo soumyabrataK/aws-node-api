@@ -2,22 +2,31 @@ service: aws-node-serverless-api
 
 frameworkVersion: "3"
 
+custom:
+  secrets: ${file(secrets.json)}
+
 provider:
   name: aws
-  runtime: nodejs12.x
+  runtime: nodejs14.x
   region: us-east-2
   memorySize: 128
   versionFunctions: false
+  timeout: 10
+  stage: ${self:custom.secrets.NODE_ENV}
   iamRoleStatements:
     - Effect: "Allow"
       Action:
         - "ses:SendEmail"
         - "ses:SendRawEmail"
       Resource: "*"
+  environment:
+    NODE_ENV: ${self:custom.secrets.NODE_ENV}
+    DB_DEV: ${self:custom.secrets.DB_DEV}
 
 functions:
   api:
     handler: handler.api
+    description: all apis
     memorySize: 128
     timeout: 600
     events:
@@ -25,14 +34,11 @@ functions:
           path: api/{path}
           method: any
           cors: true # cross origin resource sharing
-      # - http:
-      #     path: api/{path}/{path2}
-      #     method: any
-      #     cors: true
-      # - http:
-      #     path: api/{path}/{path2}/{path3}
-      #     method: any
-      #     cors: true
+      - http:
+          path: api/{path}/{path2}
+          method: any
+          cors: true
+
   userlogin:
     handler: profile.userlogin
     memorySize: 128
