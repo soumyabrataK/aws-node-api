@@ -115,7 +115,7 @@ module.exports.userlogin = async (event, context, callback) => {
       console.log('updateResponese==========>', updateResponese);
       const { acknowledged, modifiedCount, matchedCount } = updateResponese;
       if (acknowledged === true && matchedCount > 0 && modifiedCount > 0)
-        response = { operation: "Login Successful", updateResponese: updateResponese };
+        response = { operation: "Login Successful", updateResponese: createResponse };
     }
     ////////////////////////// Error Response ///////////////////////////////////////////
     if (response === undefined)
