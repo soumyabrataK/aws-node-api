@@ -81,7 +81,7 @@ module.exports.userlogin = async (event, context, callback) => {
   try {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
-    const { data } = JSON.parse(event.body);
+    const data  = JSON.parse(event.body);
     console.log("data----------->", data);
     let response;
     const updationData = clone(data);
