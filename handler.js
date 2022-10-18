@@ -91,6 +91,11 @@ async function createUpdateBlog(event, context, callback) {
     // console.log('existing=======>', existing);
 
     if (!existing) {
+      let priority = updationData.priority;
+      if (!updationData.priority) {
+        const highestPriority = await blogs.find({ priority: { $exists: true } }).sort({ priority: -1 }).limit(1);
+        if (highestPriority.length > 0) priority = Number(highestPriority[0].priority) + 1;
+      }
       ////////////////////////////////////////// Create Operation ///////////////////////////////////
       const createResponse = await blogs.create(updationData);
       // console.log('createResponse===>', createResponse)
@@ -416,7 +421,7 @@ async function createUpdateportfolio(event, context, callback) {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
     const { data } = JSON.parse(event.body);
-    console.log('portfolio---------->started',data);
+    console.log('portfolio---------->started', data);
     let response;
 
     ///////////////////////////// Data Modification for Creation or Updation /////////////////////////

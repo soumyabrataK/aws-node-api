@@ -4,13 +4,22 @@ const blogs = new mongoose.Schema({
     type: String,
     required: true
   },
+  sub_title_one: {
+    type: String,
+    default: "NA"
+  },
+  sub_title_two: {
+    type: String,
+    default: "NA"
+  },
   description: {
-    type: String
+    type: String,
+    required: true
+  },
+  date: {
+    type: Number
   },
   image: {
-    type: Array
-  },
-  youtubeVideo: {
     type: Array
   },
   priority: {
@@ -19,16 +28,17 @@ const blogs = new mongoose.Schema({
   status: {
     type: Number
   },
+  createdon_datetime: {
+    type: Number,
+    default: Math.round((new Date()).getTime())
+  },
   created_by: {
     type: String
   },
   updated_by: {
     type: String
   },
-  createdon_datetime: {
-    type: Number,
-    default: Math.round((new Date()).getTime())
-  },
+
   updated_datetime: {
     type: Number,
     default: Math.round((new Date()).getTime())

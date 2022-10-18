@@ -39,13 +39,13 @@ functions:
           method: any
           cors: true
 
-  userlogin:
-    handler: profile.userlogin
+  visits:
+    handler: visits.api
     memorySize: 128
     timeout: 600
     events:
       - http:
-          path: userlogin
+          path: visits/{path}
           method: any
           cors: true
 
