@@ -63,6 +63,9 @@ module.exports.api = (event, context, callback) => {
     case "bloglistingcount":
       bloglistingcount(event, context, callback);
       break;
+    case "deletesingleblog":
+      deleteSingleBlog(event, context, callback);
+      break;
     case "createupdateportfolio":
       createUpdateportfolio(event, context, callback);
       break;
@@ -94,7 +97,7 @@ module.exports.userlogin = async (event, context, callback) => {
     temp = encrypt(updationData.password);
     console.log("encrypted_password--------------->", temp);
     if (existing && existing[0].password === temp) {
-      ////////////////////////////////////////// verify Operation ///////////////////////////////////
+      ////////////////////////////////////////// verify O peration ///////////////////////////////////
       temp = {};
       temp.user_id = existing[0]._id;
       temp.email = existing[0].email;
@@ -319,13 +322,18 @@ async function bloglisting(event, context, callback) {
       .skip(skip)
       .lean()
       .then((response) => {
+        const modifiedResponse = response.map((res) => {
+          const obj = { ...res };
+          if (res.images && res.images.length > 0) obj.image = res.images[0].url
+          return obj
+        })
         callback(null, {
           headers: headers,
           statusCode: 200,
           body: JSON.stringify({
             status: "success",
             results: {
-              res: response,
+              res: modifiedResponse,
             },
             relation: req.relation ? req.relation : undefined,
             reqbody: req,
@@ -562,6 +570,37 @@ async function createUpdateportfolio(event, context, callback) {
         response: response,
       }),
     });
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+/////////////////////////////////////////// Delete Single Blog ///////////////////////////////////////////////
+async function deleteSingleBlog(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    const { id } = JSON.parse(event.body);
+    console.log("id=====================>", id)
+    await connectToDB();
+    const deleteResponse = await blogs.deleteOne({ _id: mongoose.Types.ObjectId(id) });
+    console.log("deleteResponse==============>", deleteResponse)
+    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: deleteResponse,
+      }),
+    });
+
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,

@@ -19,7 +19,7 @@ const blogs = new mongoose.Schema({
   date: {
     type: Number
   },
-  image: {
+  images: {
     type: Array,
     default: []
   },
