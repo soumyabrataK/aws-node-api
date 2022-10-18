@@ -13,6 +13,8 @@ const events = require("events"); // Node.js has an event-driven architecture wh
 let nodeMailer = require("nodemailer"); //Nodemailer is a module for Node.js applications to allow easy as cake email sending.
 const connectToDB = require("./connectToDB");
 const blogs = require("./collections/blogs");
+const users = require("./collections/user-schema");
+const loginschema = require("./collections/login-schema");
 const portfolios = require("./collections/portfolio");
 const { clone } = require("./helper");
 const moment = require("moment/moment");
@@ -28,7 +30,8 @@ let headers = {
 };
 
 function encrypt(text) {
-  let cipher = crypto.createCipher("aes-256-ctr", process.env.passcode);
+  console.log('text=========>', text)
+  let cipher = crypto.createCipher("aes-256-ctr", process.env.PASS_CODE);
   let crypted = cipher.update(text, "utf8", "hex");
   crypted += cipher.final("hex");
   return crypted;
@@ -60,7 +63,7 @@ module.exports.api = (event, context, callback) => {
     case "bloglistingcount":
       bloglistingcount(event, context, callback);
       break;
-    case "createUpdateportfolio":
+    case "createupdateportfolio":
       createUpdateportfolio(event, context, callback);
       break;
     case "portfoliolistingcount":
@@ -72,13 +75,82 @@ module.exports.api = (event, context, callback) => {
   }
 };
 
+//---------------------------------- user login ----------------------------------//
+module.exports.userlogin = async (event, context, callback) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    /////////////////////////////// DB Connection ///////////////////////////////////
+    await connectToDB();
+    const data = JSON.parse(event.body);
+    console.log("data----------->", data);
+    let response;
+    const updationData = clone(data);
+    // console.log('data==========>', data, "<=====updationData=======>", updationData);
+
+    ///////////////////////// DB Operation //////////////////////////////////////////////
+    const existing = await users.find({ email: updationData.email }).lean();
+    console.log("existing=======>", existing, typeof (updationData.password));
+    let temp;
+    temp = encrypt(updationData.password);
+    console.log("encrypted_password--------------->", temp);
+    if (existing && existing[0].password === temp) {
+      ////////////////////////////////////////// verify Operation ///////////////////////////////////
+      temp = {};
+      temp.user_id = existing[0]._id;
+      temp.email = existing[0].email;
+
+      console.log('modified-------->', temp)
+      const createResponse = await loginschema.create(temp);
+      // console.log('createResponse===>', createResponse)
+      // const { _id } = createResponse;
+      // if (_id) response = { operation: "create", _id: _id };
+      temp = {};
+      temp.last_login_datetime = moment().valueOf();
+      console.log('temp------>', temp)
+      /////////////////////////////////////// Update Operation ////////////////////////////////////
+      const updateResponese = await users.updateOne(
+        { _id: mongoose.Types.ObjectId(existing[0]._id) },
+        { $inc: { logincounts: 1 }, temp }
+      );
+      console.log('updateResponese==========>', updateResponese);
+      const { acknowledged, modifiedCount, matchedCount } = updateResponese;
+      if (acknowledged === true && matchedCount > 0 && modifiedCount > 0)
+        response = { operation: "Login Successful", updateResponese: createResponse };
+    }
+    ////////////////////////// Error Response ///////////////////////////////////////////
+    if (response === undefined)
+      response = { operation: "failed", message: "Something Went Wrong" };
+
+    ///////////////////////////////// Response Send /////////////////////////////////////////
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: response,
+      }),
+    });
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+};
+//---------------------------------- user login end----------------------------------//
+
 ////////////////////////////////////////////////// Create Or Update BLog /////////////////////////////////////////
 async function createUpdateBlog(event, context, callback) {
+  // console.log('createUpdateBlog started');
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
     const { data } = JSON.parse(event.body);
+    console.log("data----------->", data);
     let response;
 
     ///////////////////////////// Data Modification for Creation or Updation /////////////////////////
@@ -186,7 +258,6 @@ function createRegistration(data) {
   });
 }
 
-
 //--------------------------blog listing--------------------------//
 async function bloglisting(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
@@ -209,10 +280,13 @@ async function bloglisting(event, context, callback) {
   let sortval = {};
   let cond = {};
   let limit = {};
-  let skip = {};//===================================>>>>>>>>>>>>for search(complete)
-  delete req.searchcondition.formId;// to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
+  let skip = {}; //===================================>>>>>>>>>>>>for search(complete)
+  delete req.searchcondition.formId; // to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
   if (req.searchcondition.startDate && req.searchcondition.endDate) {
-    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
   } else if (
     typeof req.searchcondition != "undefined" &&
     req.searchcondition != null
@@ -223,15 +297,20 @@ async function bloglisting(event, context, callback) {
   if (req.sort != undefined && req.sort != null && req.sort.type == "asc") {
     req.sort.type = 1;
     sortval[req.sort.field] = req.sort.type;
-  }
-  else if (req.sort != undefined && req.sort != null && req.sort.type == "desc") {
+  } else if (
+    req.sort != undefined &&
+    req.sort != null &&
+    req.sort.type == "desc"
+  ) {
     req.sort.type = -1;
     sortval[req.sort.field] = req.sort.type;
   }
   sortval.updated_datetime = -1;
-  if (req.condition !== null && req.condition !== undefined) limit = req.condition.limit;
-  if (req.condition !== null && req.condition !== undefined) skip = req.condition.skip;
-  console.log('cond-------------------Date222++++', cond, sortval);
+  if (req.condition !== null && req.condition !== undefined)
+    limit = req.condition.limit;
+  if (req.condition !== null && req.condition !== undefined)
+    skip = req.condition.skip;
+  console.log("cond-------------------Date222++++", cond, sortval);
   connectToDB().then(() => {
     blogs
       .find(cond)
@@ -246,10 +325,10 @@ async function bloglisting(event, context, callback) {
           body: JSON.stringify({
             status: "success",
             results: {
-              res: response
+              res: response,
             },
             relation: req.relation ? req.relation : undefined,
-            reqbody: req
+            reqbody: req,
           }),
         });
       })
@@ -269,7 +348,10 @@ function bloglistingcount(event, context, callback) {
   let req = JSON.parse(event.body);
   let cond = {};
   if (req.searchcondition.startDate && req.searchcondition.endDate) {
-    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
   } else if (
     typeof req.searchcondition != "undefined" &&
     req.searchcondition != null
@@ -323,10 +405,13 @@ async function portfoliolisting(event, context, callback) {
   let sortval = {};
   let cond = {};
   let limit = {};
-  let skip = {};//===================================>>>>>>>>>>>>for search(complete)
-  delete req.searchcondition.formId;// to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
+  let skip = {}; //===================================>>>>>>>>>>>>for search(complete)
+  delete req.searchcondition.formId; // to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
   if (req.searchcondition.startDate && req.searchcondition.endDate) {
-    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
   } else if (
     typeof req.searchcondition != "undefined" &&
     req.searchcondition != null
@@ -337,15 +422,20 @@ async function portfoliolisting(event, context, callback) {
   if (req.sort != undefined && req.sort != null && req.sort.type == "asc") {
     req.sort.type = 1;
     sortval[req.sort.field] = req.sort.type;
-  }
-  else if (req.sort != undefined && req.sort != null && req.sort.type == "desc") {
+  } else if (
+    req.sort != undefined &&
+    req.sort != null &&
+    req.sort.type == "desc"
+  ) {
     req.sort.type = -1;
     sortval[req.sort.field] = req.sort.type;
   }
   sortval.updated_datetime = -1;
-  if (req.condition !== null && req.condition !== undefined) limit = req.condition.limit;
-  if (req.condition !== null && req.condition !== undefined) skip = req.condition.skip;
-  console.log('cond-------------------Date222++++', cond, sortval);
+  if (req.condition !== null && req.condition !== undefined)
+    limit = req.condition.limit;
+  if (req.condition !== null && req.condition !== undefined)
+    skip = req.condition.skip;
+  console.log("cond-------------------Date222++++", cond, sortval);
   connectToDB().then(() => {
     portfolios
       .find(cond)
@@ -360,10 +450,10 @@ async function portfoliolisting(event, context, callback) {
           body: JSON.stringify({
             status: "success",
             results: {
-              res: response
+              res: response,
             },
             relation: req.relation ? req.relation : undefined,
-            reqbody: req
+            reqbody: req,
           }),
         });
       })
@@ -383,7 +473,10 @@ function portfoliolistingcount(event, context, callback) {
   let req = JSON.parse(event.body);
   let cond = {};
   if (req.searchcondition.startDate && req.searchcondition.endDate) {
-    cond.createdon_datetime = { "$gte": req.searchcondition.startDate, "$lte": req.searchcondition.endDate };
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
   } else if (
     typeof req.searchcondition != "undefined" &&
     req.searchcondition != null
@@ -421,13 +514,18 @@ async function createUpdateportfolio(event, context, callback) {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
     const { data } = JSON.parse(event.body);
-    console.log('portfolio---------->started', data);
+    console.log("portfolio---------->started", data);
     let response;
 
     ///////////////////////////// Data Modification for Creation or Updation /////////////////////////
     const updationData = clone(data);
     if (updationData._id) delete updationData._id;
-    console.log('data==========>', data, "<=====updationData=======>", updationData);
+    console.log(
+      "data==========>",
+      data,
+      "<=====updationData=======>",
+      updationData
+    );
 
     ///////////////////////// DB Operation //////////////////////////////////////////////
     const existing = await portfolios.findById(data._id, { _id: 1 });
