@@ -20,13 +20,15 @@ const blogs = new mongoose.Schema({
     type: Number
   },
   image: {
-    type: Array
+    type: Array,
+    default: []
   },
   priority: {
     type: Number
   },
   status: {
-    type: Number
+    type: Number,
+    default: 1
   },
   createdon_datetime: {
     type: Number,

@@ -1,4 +1,4 @@
-service: aws-node-serverless-api
+service: aws-node-api
 
 frameworkVersion: "3"
 
