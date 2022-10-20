@@ -5,29 +5,48 @@ const portfolios = new mongoose.Schema({
     required: true
   },
   description: {
-    type: String
+    type: String,
+    required: true
   },
-  image: {
-    type: Array
+  category: {
+    type: String,
+    required: true
   },
-  youtubeVideo: {
-    type: Array
+  author: {
+    type: String,
+    required: true
+  },
+  role: {
+    type: String,
+    required: true
+  },
+  link: {
+    type: String,
+    default: "NA"
+  },
+  date: {
+    type: Number
+  },
+  images: {
+    type: Array,
+    default: []
   },
   priority: {
     type: Number
   },
   status: {
-    type: Number
+    type: Number,
+    default: 1
+  },
+  createdon_datetime: {
+    type: Number,
+    default: Math.round((new Date()).getTime())
   },
   created_by: {
     type: String
   },
   updated_by: {
     type: String
-  },
-  createdon_datetime: {
-    type: Number,
-    default: Math.round((new Date()).getTime())
   },
   updated_datetime: {
     type: Number,

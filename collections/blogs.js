@@ -23,6 +23,10 @@ const blogs = new mongoose.Schema({
     type: Array,
     default: []
   },
+  category: {
+    type: String,
+    required: true
+  },
   priority: {
     type: Number
   },
