@@ -2,7 +2,7 @@ service: aws-node-api
 
 frameworkVersion: "3"
 
-custom: 
+custom:
   secrets: ${file(secrets.json)}
 
 provider:
@@ -13,13 +13,13 @@ provider:
   versionFunctions: false
   timeout: 10
   stage: ${self:custom.secrets.NODE_ENV}
-  iamRoleStatements: 
+  iamRoleStatements:
     - Effect: "Allow"
-      Action: 
+      Action:
         - "ses:SendEmail"
         - "ses:SendRawEmail"
       Resource: "*"
-  environment:  
+  environment:
     NODE_ENV: ${self:custom.secrets.NODE_ENV}
     DB_DEV: ${self:custom.secrets.DB_DEV}
     PASS_CODE: ${self:custom.secrets.PASS_CODE}
@@ -40,13 +40,23 @@ functions:
           method: any
           cors: true
 
+  visits:
+    handler: visits.api
+    memorySize: 128
+    timeout: 600
+    events:
+      - http:
+          path: visits/{path}
+          method: any
+          cors: true
+
   userlogin:
     handler: handler.userlogin
     memorySize: 128
     timeout: 600
     events:
       - http:
-          path: userlogin
+          path: login
           method: any
           cors: true
 

@@ -19,6 +19,7 @@ const portfolios = require("./collections/portfolio");
 const { clone } = require("./helper");
 const moment = require("moment/moment");
 const get_quote = require("./collections/get_quote");
+const portfolio = require("./collections/portfolio");
 
 let headers = {
   // headers let the client and the server pass additional information with an HTTP request or response.
@@ -30,7 +31,7 @@ let headers = {
 };
 
 function encrypt(text) {
-  console.log('text=========>',text)
+  console.log('text=========>', text)
   let cipher = crypto.createCipher("aes-256-ctr", process.env.PASS_CODE);
   let crypted = cipher.update(text, "utf8", "hex");
   crypted += cipher.final("hex");
@@ -63,6 +64,9 @@ module.exports.api = (event, context, callback) => {
     case "bloglistingcount":
       bloglistingcount(event, context, callback);
       break;
+    case "deletesingleblog":
+      deleteSingleBlog(event, context, callback);
+      break;
     case "createupdateportfolio":
       createUpdateportfolio(event, context, callback);
       break;
@@ -71,6 +75,18 @@ module.exports.api = (event, context, callback) => {
       break;
     case "portfoliolisting":
       portfoliolisting(event, context, callback);
+      break;
+    case "deletesingleportfolio":
+      deleteSinglePortfolio(event, context, callback);
+      break;
+    case "fetch-portfolio-categories":
+      fetchPortfolioCategories(event, context, callback);
+      break;
+    case "fetch-portfolios-by-category":
+      fetchPortfoliosByCategories(event, context, callback);
+      break;
+    case "fetch-blog-details":
+      fetchBlogDetails(event, context, callback);
       break;
   }
 };
@@ -81,7 +97,7 @@ module.exports.userlogin = async (event, context, callback) => {
   try {
     /////////////////////////////// DB Connection ///////////////////////////////////
     await connectToDB();
-    const data  = JSON.parse(event.body);
+    const data = JSON.parse(event.body);
     console.log("data----------->", data);
     let response;
     const updationData = clone(data);
@@ -89,16 +105,16 @@ module.exports.userlogin = async (event, context, callback) => {
 
     ///////////////////////// DB Operation //////////////////////////////////////////////
     const existing = await users.find({ email: updationData.email }).lean();
-    console.log("existing=======>", existing, typeof(updationData.password));
+    console.log("existing=======>", existing, typeof (updationData.password));
     let temp;
     temp = encrypt(updationData.password);
     console.log("encrypted_password--------------->", temp);
     if (existing && existing[0].password === temp) {
-      ////////////////////////////////////////// verify Operation ///////////////////////////////////
+      ////////////////////////////////////////// verify O peration ///////////////////////////////////
       temp = {};
       temp.user_id = existing[0]._id;
       temp.email = existing[0].email;
-      
+
       console.log('modified-------->', temp)
       const createResponse = await loginschema.create(temp);
       // console.log('createResponse===>', createResponse)
@@ -163,6 +179,11 @@ async function createUpdateBlog(event, context, callback) {
     // console.log('existing=======>', existing);
 
     if (!existing) {
+      let priority = updationData.priority;
+      if (!updationData.priority) {
+        const highestPriority = await blogs.find({ priority: { $exists: true } }).sort({ priority: -1 }).limit(1);
+        if (highestPriority.length > 0) priority = Number(highestPriority[0].priority) + 1;
+      }
       ////////////////////////////////////////// Create Operation ///////////////////////////////////
       const createResponse = await blogs.create(updationData);
       // console.log('createResponse===>', createResponse)
@@ -314,13 +335,18 @@ async function bloglisting(event, context, callback) {
       .skip(skip)
       .lean()
       .then((response) => {
+        const modifiedResponse = response.map((res) => {
+          const obj = { ...res };
+          if (res.images && res.images.length > 0) obj.image = res.images[0].url
+          return obj
+        })
         callback(null, {
           headers: headers,
           statusCode: 200,
           body: JSON.stringify({
             status: "success",
             results: {
-              res: response,
+              res: modifiedResponse,
             },
             relation: req.relation ? req.relation : undefined,
             reqbody: req,
@@ -439,13 +465,19 @@ async function portfoliolisting(event, context, callback) {
       .skip(skip)
       .lean()
       .then((response) => {
+        const modifiedResponse = response.map((res) => {
+          const obj = { ...res };
+          if (res.images && res.images.length > 0) obj.image = res.images[0].url
+          return obj
+        })
+        console.log("modifiedResponse==========>", modifiedResponse)
         callback(null, {
           headers: headers,
           statusCode: 200,
           body: JSON.stringify({
             status: "success",
             results: {
-              res: response,
+              res: modifiedResponse,
             },
             relation: req.relation ? req.relation : undefined,
             reqbody: req,
@@ -558,6 +590,184 @@ async function createUpdateportfolio(event, context, callback) {
       }),
     });
   } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+/////////////////////////////////////////// Delete Single Blog ///////////////////////////////////////////////
+async function deleteSingleBlog(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    const { id } = JSON.parse(event.body);
+    console.log("id=====================>", id)
+    await connectToDB();
+    const deleteResponse = await blogs.deleteOne({ _id: mongoose.Types.ObjectId(id) });
+    console.log("deleteResponse==============>", deleteResponse)
+    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: deleteResponse,
+      }),
+    });
+
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+/////////////////////////////////////////// Delete Single Blog ///////////////////////////////////////////////
+async function deleteSinglePortfolio(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    const { id } = JSON.parse(event.body);
+    console.log("id=====================>", id)
+    await connectToDB();
+    const deleteResponse = await portfolio.deleteOne({ _id: mongoose.Types.ObjectId(id) });
+    console.log("deleteResponse==============>", deleteResponse)
+    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: deleteResponse,
+      }),
+    });
+
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+async function fetchPortfolioCategories(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    await connectToDB();
+    const response = await portfolio.distinct("category");
+    console.log("response==============>", response)
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: response,
+      }),
+    });
+
+  } catch (error) {
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+//////////////////////////////////////// fetchBlogDetails //////////////////////////////////////
+async function fetchBlogDetails(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  const { id } = event.queryStringParameters;
+  console.log("id==============>", id)
+
+  try {
+    await connectToDB();
+
+    let results = await async.parallel({
+      blogData: async () => {
+        let blogData;
+        if (id) blogData = await blogs.find({ _id: mongoose.Types.ObjectId(id) });
+        else blogData = await blogs.find().sort({ priority: 1 }).limit(1);
+        return blogData;
+      },
+      recentBlogs: async () => {
+        let recentBlogs;
+        if (id) recentBlogs = await blogs.find({ _id: { $ne: mongoose.Types.ObjectId(id) } }).sort({ date: -1 }).limit(5)
+        else recentBlogs = await blogs.find({}).sort({ date: -1 }).limit(5);
+        return recentBlogs;
+      },
+      categories: async () => {
+        const categories = [];
+        const categoryTypes = await blogs.distinct("category");
+
+        await Promise.all(categoryTypes.map(async (cat) => {
+          const catCount = await blogs.find({ category: cat }).count();
+          categories.push({ category: cat, count: catCount });
+        }))
+        return categories;
+      }
+    })
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: results,
+      }),
+    });
+
+  } catch (error) {
+    console.log("error================>", error)
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+
+}
+
+////////////////////////////////////// fetchPortfoliosByCategories /////////////////////////////////
+async function fetchPortfoliosByCategories(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  const { cat } = event.queryStringParameters;
+  console.log("cat==============>", cat);
+
+  try {
+    await connectToDB();
+    let category = "";
+    if (cat) category = cat;
+    const portfolios = await portfolio.find({ category: { $regex: cat, $options: "i" } });
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: portfolios,
+      }),
+    });
+
+  } catch (error) {
+    console.log("error================>", error)
     callback(null, {
       statusCode: error.statusCode || 500,
       headers: {
