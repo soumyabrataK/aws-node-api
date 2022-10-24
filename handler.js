@@ -32,7 +32,7 @@ let headers = {
 };
 
 function encrypt(text) {
-  console.log('text=========>', text)
+  console.log("text=========>", text);
   let cipher = crypto.createCipher("aes-256-ctr", process.env.PASS_CODE);
   let crypted = cipher.update(text, "utf8", "hex");
   crypted += cipher.final("hex");
@@ -101,6 +101,9 @@ module.exports.api = (event, context, callback) => {
     case "fetch-blog-details":
       fetchBlogDetails(event, context, callback);
       break;
+    case "fetch-blogs-by-category":
+      fetchBlogsByCategories(event, context, callback);
+      break;
   }
 };
 
@@ -118,7 +121,7 @@ module.exports.userlogin = async (event, context, callback) => {
 
     ///////////////////////// DB Operation //////////////////////////////////////////////
     const existing = await users.find({ email: updationData.email }).lean();
-    console.log("existing=======>", existing, typeof (updationData.password));
+    console.log("existing=======>", existing, typeof updationData.password);
     let temp;
     temp = encrypt(updationData.password);
     console.log("encrypted_password--------------->", temp);
@@ -128,23 +131,26 @@ module.exports.userlogin = async (event, context, callback) => {
       temp.user_id = existing[0]._id;
       temp.email = existing[0].email;
 
-      console.log('modified-------->', temp)
+      console.log("modified-------->", temp);
       const createResponse = await loginschema.create(temp);
       // console.log('createResponse===>', createResponse)
       // const { _id } = createResponse;
       // if (_id) response = { operation: "create", _id: _id };
       temp = {};
       temp.last_login_datetime = moment().valueOf();
-      console.log('temp------>', temp)
+      console.log("temp------>", temp);
       /////////////////////////////////////// Update Operation ////////////////////////////////////
       const updateResponese = await users.updateOne(
         { _id: mongoose.Types.ObjectId(existing[0]._id) },
         { $inc: { logincounts: 1 }, temp }
       );
-      console.log('updateResponese==========>', updateResponese);
+      console.log("updateResponese==========>", updateResponese);
       const { acknowledged, modifiedCount, matchedCount } = updateResponese;
       if (acknowledged === true && matchedCount > 0 && modifiedCount > 0)
-        response = { operation: "Login Successful", updateResponese: createResponse };
+        response = {
+          operation: "Login Successful",
+          updateResponese: createResponse,
+        };
     }
     ////////////////////////// Error Response ///////////////////////////////////////////
     if (response === undefined)
@@ -194,8 +200,12 @@ async function createUpdateBlog(event, context, callback) {
     if (!existing) {
       let priority = updationData.priority;
       if (!updationData.priority) {
-        const highestPriority = await blogs.find({ priority: { $exists: true } }).sort({ priority: -1 }).limit(1);
-        if (highestPriority.length > 0) priority = Number(highestPriority[0].priority) + 1;
+        const highestPriority = await blogs
+          .find({ priority: { $exists: true } })
+          .sort({ priority: -1 })
+          .limit(1);
+        if (highestPriority.length > 0)
+          priority = Number(highestPriority[0].priority) + 1;
       }
       ////////////////////////////////////////// Create Operation ///////////////////////////////////
       const createResponse = await blogs.create(updationData);
@@ -350,9 +360,10 @@ async function bloglisting(event, context, callback) {
       .then((response) => {
         const modifiedResponse = response.map((res) => {
           const obj = { ...res };
-          if (res.images && res.images.length > 0) obj.image = res.images[0].url
-          return obj
-        })
+          if (res.images && res.images.length > 0)
+            obj.image = res.images[0].url;
+          return obj;
+        });
         callback(null, {
           headers: headers,
           statusCode: 200,
@@ -480,10 +491,11 @@ async function portfoliolisting(event, context, callback) {
       .then((response) => {
         const modifiedResponse = response.map((res) => {
           const obj = { ...res };
-          if (res.images && res.images.length > 0) obj.image = res.images[0].url
-          return obj
-        })
-        console.log("modifiedResponse==========>", modifiedResponse)
+          if (res.images && res.images.length > 0)
+            obj.image = res.images[0].url;
+          return obj;
+        });
+        console.log("modifiedResponse==========>", modifiedResponse);
         callback(null, {
           headers: headers,
           statusCode: 200,
@@ -618,11 +630,17 @@ async function deleteSingleBlog(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     const { id } = JSON.parse(event.body);
-    console.log("id=====================>", id)
+    console.log("id=====================>", id);
     await connectToDB();
-    const deleteResponse = await blogs.deleteOne({ _id: mongoose.Types.ObjectId(id) });
-    console.log("deleteResponse==============>", deleteResponse)
-    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+    const deleteResponse = await blogs.deleteOne({
+      _id: mongoose.Types.ObjectId(id),
+    });
+    console.log("deleteResponse==============>", deleteResponse);
+    if (
+      deleteResponse.acknowledged === false ||
+      deleteResponse.deletedCount === 0
+    )
+      throw "No Items Deleted";
 
     callback(null, {
       headers: headers,
@@ -632,7 +650,6 @@ async function deleteSingleBlog(event, context, callback) {
         response: deleteResponse,
       }),
     });
-
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
@@ -649,11 +666,17 @@ async function deleteSinglePortfolio(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     const { id } = JSON.parse(event.body);
-    console.log("id=====================>", id)
+    console.log("id=====================>", id);
     await connectToDB();
-    const deleteResponse = await portfolio.deleteOne({ _id: mongoose.Types.ObjectId(id) });
-    console.log("deleteResponse==============>", deleteResponse)
-    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+    const deleteResponse = await portfolio.deleteOne({
+      _id: mongoose.Types.ObjectId(id),
+    });
+    console.log("deleteResponse==============>", deleteResponse);
+    if (
+      deleteResponse.acknowledged === false ||
+      deleteResponse.deletedCount === 0
+    )
+      throw "No Items Deleted";
 
     callback(null, {
       headers: headers,
@@ -663,7 +686,6 @@ async function deleteSinglePortfolio(event, context, callback) {
         response: deleteResponse,
       }),
     });
-
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
@@ -680,7 +702,7 @@ async function fetchServiceCategories(event, context, callback) {
   try {
     await connectToDB();
     const response = await services.distinct("name");
-    console.log("response==============>", response)
+    console.log("response==============>", response);
 
     callback(null, {
       headers: headers,
@@ -690,7 +712,6 @@ async function fetchServiceCategories(event, context, callback) {
         response: response,
       }),
     });
-
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
@@ -706,7 +727,7 @@ async function fetchServiceCategories(event, context, callback) {
 async function fetchBlogDetails(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const { id } = event.queryStringParameters;
-  console.log("id==============>", id)
+  console.log("id==============>", id);
 
   try {
     await connectToDB();
@@ -714,13 +735,18 @@ async function fetchBlogDetails(event, context, callback) {
     let results = await async.parallel({
       blogData: async () => {
         let blogData;
-        if (id) blogData = await blogs.find({ _id: mongoose.Types.ObjectId(id) });
+        if (id)
+          blogData = await blogs.find({ _id: mongoose.Types.ObjectId(id) });
         else blogData = await blogs.find().sort({ priority: 1 }).limit(1);
         return blogData;
       },
       recentBlogs: async () => {
         let recentBlogs;
-        if (id) recentBlogs = await blogs.find({ _id: { $ne: mongoose.Types.ObjectId(id) } }).sort({ date: -1 }).limit(5)
+        if (id)
+          recentBlogs = await blogs
+            .find({ _id: { $ne: mongoose.Types.ObjectId(id) } })
+            .sort({ date: -1 })
+            .limit(5);
         else recentBlogs = await blogs.find({}).sort({ date: -1 }).limit(5);
         return recentBlogs;
       },
@@ -728,13 +754,15 @@ async function fetchBlogDetails(event, context, callback) {
         const categories = [];
         const categoryTypes = await blogs.distinct("category");
 
-        await Promise.all(categoryTypes.map(async (cat) => {
-          const catCount = await blogs.find({ category: cat }).count();
-          categories.push({ category: cat, count: catCount });
-        }))
+        await Promise.all(
+          categoryTypes.map(async (cat) => {
+            const catCount = await blogs.find({ category: cat }).count();
+            categories.push({ category: cat, count: catCount });
+          })
+        );
         return categories;
-      }
-    })
+      },
+    });
 
     callback(null, {
       headers: headers,
@@ -744,9 +772,8 @@ async function fetchBlogDetails(event, context, callback) {
         response: results,
       }),
     });
-
   } catch (error) {
-    console.log("error================>", error)
+    console.log("error================>", error);
     callback(null, {
       statusCode: error.statusCode || 500,
       headers: {
@@ -755,7 +782,6 @@ async function fetchBlogDetails(event, context, callback) {
       body: "Connection problem" + String(error),
     });
   }
-
 }
 
 ////////////////////////////////////// fetchPortfoliosByCategories /////////////////////////////////
@@ -768,7 +794,9 @@ async function fetchPortfoliosByCategories(event, context, callback) {
     await connectToDB();
     let category = "";
     if (cat) category = cat;
-    const portfolios = await portfolio.find({ category: { $regex: cat, $options: "i" } });
+    const portfolios = await portfolio.find({
+      category: { $regex: cat, $options: "i" },
+    });
 
     callback(null, {
       headers: headers,
@@ -778,9 +806,8 @@ async function fetchPortfoliosByCategories(event, context, callback) {
         response: portfolios,
       }),
     });
-
   } catch (error) {
-    console.log("error================>", error)
+    console.log("error================>", error);
     callback(null, {
       statusCode: error.statusCode || 500,
       headers: {
@@ -857,11 +884,17 @@ async function deleteSingleService(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     const { id } = JSON.parse(event.body);
-    console.log("id=====================>", id)
+    console.log("id=====================>", id);
     await connectToDB();
-    const deleteResponse = await services.deleteOne({ _id: mongoose.Types.ObjectId(id) });
-    console.log("deleteResponse==============>", deleteResponse)
-    if (deleteResponse.acknowledged === false || deleteResponse.deletedCount === 0) throw 'No Items Deleted'
+    const deleteResponse = await services.deleteOne({
+      _id: mongoose.Types.ObjectId(id),
+    });
+    console.log("deleteResponse==============>", deleteResponse);
+    if (
+      deleteResponse.acknowledged === false ||
+      deleteResponse.deletedCount === 0
+    )
+      throw "No Items Deleted";
 
     callback(null, {
       headers: headers,
@@ -871,7 +904,6 @@ async function deleteSingleService(event, context, callback) {
         response: deleteResponse,
       }),
     });
-
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
@@ -945,10 +977,11 @@ async function serviceListing(event, context, callback) {
       .then((response) => {
         const modifiedResponse = response.map((res) => {
           const obj = { ...res };
-          if (res.images && res.images.length > 0) obj.image = res.images[0].url
-          return obj
-        })
-        console.log("modifiedResponse==========>", modifiedResponse)
+          if (res.images && res.images.length > 0)
+            obj.image = res.images[0].url;
+          return obj;
+        });
+        console.log("modifiedResponse==========>", modifiedResponse);
         callback(null, {
           headers: headers,
           statusCode: 200,
@@ -1011,4 +1044,37 @@ function serviceListingCount(event, context, callback) {
         })
       );
   });
+}
+
+async function fetchBlogsByCategories(event, context, callback){
+  context.callbackWaitsForEmptyEventLoop = false;
+  const { cat } = event.queryStringParameters;
+  console.log("cat==============>", cat);
+
+  try {
+    await connectToDB();
+    let category = "";
+    if (cat) category = cat;
+    const blogsData = await blogs.find({
+      category: { $regex: cat, $options: "i" },
+    });
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: blogsData,
+      }),
+    });
+  } catch (error) {
+    console.log("error================>", error);
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
 }
