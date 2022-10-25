@@ -104,6 +104,9 @@ module.exports.api = (event, context, callback) => {
     case "fetch-blogs-by-category":
       fetchBlogsByCategories(event, context, callback);
       break;
+    case "fetch-services":
+      fetchServices(event, context, callback);
+      break;
   }
 };
 
@@ -1046,7 +1049,7 @@ function serviceListingCount(event, context, callback) {
   });
 }
 
-async function fetchBlogsByCategories(event, context, callback){
+async function fetchBlogsByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const { cat } = event.queryStringParameters;
   console.log("cat==============>", cat);
@@ -1065,6 +1068,42 @@ async function fetchBlogsByCategories(event, context, callback){
       body: JSON.stringify({
         status: "success",
         response: blogsData,
+      }),
+    });
+  } catch (error) {
+    console.log("error================>", error);
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+////////////////////////////////// fetchServices /////////////////////////////////
+async function fetchServices(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  const params = event.queryStringParameters;
+  console.log("params==============>", params);
+
+  let limit = 0;
+  let skip = 0;
+
+  if (params && params.skip && Number(params.skip)) skip = Number(params.skip);
+  if (params && params.limit && Number(params.limit)) limit = Number(params.limit);
+
+  try {
+    await connectToDB();
+    const serviceData = await services.find().skip(skip).limit(limit);
+
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: serviceData,
       }),
     });
   } catch (error) {
