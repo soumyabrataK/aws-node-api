@@ -704,7 +704,7 @@ async function fetchServiceCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
     await connectToDB();
-    const response = await services.distinct("name");
+    const response = await services.distinct("name", { status: 1 });
     console.log("response==============>", response);
 
     callback(null, {
@@ -795,10 +795,13 @@ async function fetchPortfoliosByCategories(event, context, callback) {
 
   try {
     await connectToDB();
-    let category = "";
-    if (cat) category = cat;
+    if (cat === "") {
+
+    }
+
     const portfolios = await portfolio.find({
       category: { $regex: cat, $options: "i" },
+      status: 1
     });
 
     callback(null, {
@@ -1060,6 +1063,7 @@ async function fetchBlogsByCategories(event, context, callback) {
     if (cat) category = cat;
     const blogsData = await blogs.find({
       category: { $regex: cat, $options: "i" },
+      status: 1
     });
 
     callback(null, {
@@ -1096,7 +1100,7 @@ async function fetchServices(event, context, callback) {
 
   try {
     await connectToDB();
-    const serviceData = await services.find().skip(skip).limit(limit);
+    const serviceData = await services.find({ status: 1 }).skip(skip).limit(limit);
 
     callback(null, {
       headers: headers,
