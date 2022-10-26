@@ -18,7 +18,7 @@ module.exports.api = (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
   console.log("endpoint hitted", event.pathParameters);
   switch (event.pathParameters.path) {
-    case "create-edit-blog":
+    case "page-visited":
       createUpdateBlog(event, context, callback);
       break;
   }
