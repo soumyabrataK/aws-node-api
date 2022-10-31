@@ -796,19 +796,20 @@ async function fetchBlogDetails(event, context, callback) {
 ////////////////////////////////////// fetchPortfoliosByCategories /////////////////////////////////
 async function fetchPortfoliosByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { cat } = event.queryStringParameters;
+  const { cat, sort, type } = event.queryStringParameters;
   console.log("cat==============>", cat);
+  let sortVal = { priority: 1 }
 
   try {
     await connectToDB();
-    if (cat === "") {
-
+    if (sort) {
+      type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
     }
 
     const portfolios = await portfolio.find({
       category: { $regex: cat, $options: "i" },
       status: 1
-    });
+    }).sort(sortVal);
 
     callback(null, {
       headers: headers,
@@ -1060,17 +1061,22 @@ function serviceListingCount(event, context, callback) {
 
 async function fetchBlogsByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { cat } = event.queryStringParameters;
+  const { cat, sort, type } = event.queryStringParameters;
+  let sortVal = { priority: 1 }
+
   console.log("cat==============>", cat);
 
   try {
     await connectToDB();
     let category = "";
     if (cat) category = cat;
+    if (sort) {
+      type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
+    }
     const blogsData = await blogs.find({
       category: { $regex: cat, $options: "i" },
       status: 1
-    });
+    }).sort(sortVal);
 
     callback(null, {
       headers: headers,
@@ -1096,6 +1102,9 @@ async function fetchBlogsByCategories(event, context, callback) {
 async function fetchServices(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const params = event.queryStringParameters;
+  const { cat, sort, type } = event.queryStringParameters;
+  let sortVal = { priority: 1 }
+
   console.log("params==============>", params);
 
   let limit = 0;
@@ -1104,9 +1113,14 @@ async function fetchServices(event, context, callback) {
   if (params && params.skip && Number(params.skip)) skip = Number(params.skip);
   if (params && params.limit && Number(params.limit)) limit = Number(params.limit);
 
+  if (sort) {
+    type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
+  }
+
   try {
     await connectToDB();
-    const serviceData = await services.find({ status: 1 }).skip(skip).limit(limit);
+
+    const serviceData = await services.find({ status: 1 }).sort(sortVal).skip(skip).limit(limit);
 
     callback(null, {
       headers: headers,
