@@ -19,7 +19,7 @@ module.exports.api = (event, context, callback) => {
   console.log("endpoint hitted", event.pathParameters);
   switch (event.pathParameters.path) {
     case "page-visited":
-      createUpdateBlog(event, context, callback);
+      pageVisited(event, context, callback);
       break;
   }
 };
