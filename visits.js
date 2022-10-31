@@ -18,8 +18,13 @@ module.exports.api = (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
   console.log("endpoint hitted", event.pathParameters);
   switch (event.pathParameters.path) {
+<<<<<<< HEAD
     case "visited-page":
       visitedPage(event, context, callback);
+=======
+    case "page-visited":
+      createUpdateBlog(event, context, callback);
+>>>>>>> 5ac6b33f174cdc6ec2631ebf874f1d01b236c0a4
       break;
   }
 };

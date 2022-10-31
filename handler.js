@@ -92,6 +92,12 @@ module.exports.api = (event, context, callback) => {
     case "servicelistingcount":
       serviceListingCount(event, context, callback);
       break;
+    case "quotelisting":
+      quoteListing(event, context, callback);
+      break;
+    case "quotelistingcount":
+      quoteListingCount(event, context, callback);
+      break;
     case "deletesingleservice":
       deleteSingleService(event, context, callback);
       break;
@@ -1164,4 +1170,128 @@ async function fetchServices(event, context, callback) {
       body: "Connection problem" + String(error),
     });
   }
+}
+
+async function quoteListing(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("Portfoliolisting startedddddddddd");
+  let req = JSON.parse(event.body);
+  console.log("req----------------->", req);
+  //-----------------token verification---------------------------//
+  // let flag = false;
+  // let flag = await verifytoken(req.email,req.token);
+  // console.log('flag----------------->', flag);
+  // if(!flag){
+  //   return callback(null, {
+  //     statusCode: 500,
+  //     headers: headers,
+  //     body: "Access Denied",
+  //   })
+  // }
+  //---------------------------end---------------------------------//
+  delete req.searchcondition.token;
+  let sortval = {};
+  let cond = {};
+  let limit = {};
+  let skip = {}; //===================================>>>>>>>>>>>>for search(complete)
+  delete req.searchcondition.formId; // to delete formid ==== createdon_datetime: {$gte: 1661970600000, $lte: 1664562600000}, type: "admin"
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("cond1", cond);
+  if (req.sort != undefined && req.sort != null && req.sort.type == "asc") {
+    req.sort.type = 1;
+    sortval[req.sort.field] = req.sort.type;
+  } else if (
+    req.sort != undefined &&
+    req.sort != null &&
+    req.sort.type == "desc"
+  ) {
+    req.sort.type = -1;
+    sortval[req.sort.field] = req.sort.type;
+  }
+  sortval.updated_datetime = -1;
+  if (req.condition !== null && req.condition !== undefined)
+    limit = req.condition.limit;
+  if (req.condition !== null && req.condition !== undefined)
+    skip = req.condition.skip;
+  console.log("cond-------------------Date222++++", cond, sortval);
+  connectToDB().then(() => {
+    get_quote
+      .find(cond)
+      .sort(sortval)
+      .limit(limit)
+      .skip(skip)
+      .lean()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            results: {
+              res: response,
+            },
+            relation: req.relation ? req.relation : undefined,
+            reqbody: req,
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
+}
+//--------------------------------Service listcount----------------------//
+function quoteListingCount(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  console.log("Portfoliocount startedddddddddd");
+  let req = JSON.parse(event.body);
+  let cond = {};
+  if (req.searchcondition.startDate && req.searchcondition.endDate) {
+    cond.createdon_datetime = {
+      $gte: req.searchcondition.startDate,
+      $lte: req.searchcondition.endDate,
+    };
+  } else if (
+    typeof req.searchcondition != "undefined" &&
+    req.searchcondition != null
+  ) {
+    cond = req.searchcondition;
+  }
+  console.log("req=======", req);
+  connectToDB().then(() => {
+    get_quote
+      .find(cond)
+      .count()
+      .then((response) => {
+        callback(null, {
+          headers: headers,
+          statusCode: 200,
+          body: JSON.stringify({
+            status: "success",
+            count: response,
+          }),
+        });
+      })
+      .catch((err) =>
+        callback(null, {
+          statusCode: err.statusCode || 500,
+          headers: headers,
+          body: "Could not fetch the notes.",
+        })
+      );
+  });
 }
