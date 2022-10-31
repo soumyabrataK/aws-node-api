@@ -59,6 +59,9 @@ module.exports.api = (event, context, callback) => {
     case "get-qoute":
       getQoute(event, context, callback);
       break;
+    case "blog-edit-data":
+      blogEdit(event, context, callback);
+      break;
     case "bloglisting":
       bloglisting(event, context, callback);
       break;
@@ -243,6 +246,44 @@ async function createUpdateBlog(event, context, callback) {
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+async function blogEdit(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    console.log('first--------->event', event.queryStringParameters);
+    await connectToDB();
+    const { id } = event.queryStringParameters;
+    console.log("data----------->", id);
+    // return
+    let response;
+    // const reqData = clone(data);
+    ///////////////////////// DB Operation //////////////////////////////////////////////
+    const existing = await blogs.findById(mongoose.Types.ObjectId(id)).lean();
+    console.log('first---------->existing', existing);
+    if (existing) response = { operation: "find", result: existing };
+    ////////////////////////// Error Response ///////////////////////////////////////////
+    if (response === undefined)
+      response = { operation: "failed", message: "Something Went Wrong" };
+    ///////////////////////////////// Response Send /////////////////////////////////////////
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: response.result,
+      }),
+    });
+  } catch (error) {
+    console.log('first-------->', error)
+    callback(null, {
+      statusCode: error.statusCode || 300,
       headers: {
         "Content-Type": "text/plain",
       },
@@ -796,12 +837,11 @@ async function fetchPortfoliosByCategories(event, context, callback) {
   try {
     await connectToDB();
     if (cat === "") {
-
     }
 
     const portfolios = await portfolio.find({
       category: { $regex: cat, $options: "i" },
-      status: 1
+      status: 1,
     });
 
     callback(null, {
@@ -1063,7 +1103,7 @@ async function fetchBlogsByCategories(event, context, callback) {
     if (cat) category = cat;
     const blogsData = await blogs.find({
       category: { $regex: cat, $options: "i" },
-      status: 1
+      status: 1,
     });
 
     callback(null, {
@@ -1096,11 +1136,15 @@ async function fetchServices(event, context, callback) {
   let skip = 0;
 
   if (params && params.skip && Number(params.skip)) skip = Number(params.skip);
-  if (params && params.limit && Number(params.limit)) limit = Number(params.limit);
+  if (params && params.limit && Number(params.limit))
+    limit = Number(params.limit);
 
   try {
     await connectToDB();
-    const serviceData = await services.find({ status: 1 }).skip(skip).limit(limit);
+    const serviceData = await services
+      .find({ status: 1 })
+      .skip(skip)
+      .limit(limit);
 
     callback(null, {
       headers: headers,
