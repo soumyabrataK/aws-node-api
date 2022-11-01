@@ -77,6 +77,9 @@ module.exports.api = (event, context, callback) => {
     case "portfoliolistingcount":
       portfoliolistingcount(event, context, callback);
       break;
+    case "portfolio-edit-data":
+      portfolioEdit(event, context, callback);
+      break;
     case "portfoliolisting":
       portfoliolisting(event, context, callback);
       break;
@@ -263,7 +266,7 @@ async function createUpdateBlog(event, context, callback) {
 async function blogEdit(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   try {
-    console.log('first--------->event', event.queryStringParameters);
+    console.log("first--------->event", event.queryStringParameters);
     await connectToDB();
     const { id } = event.queryStringParameters;
     console.log("data----------->", id);
@@ -272,7 +275,7 @@ async function blogEdit(event, context, callback) {
     // const reqData = clone(data);
     ///////////////////////// DB Operation //////////////////////////////////////////////
     const existing = await blogs.findById(mongoose.Types.ObjectId(id)).lean();
-    console.log('first---------->existing', existing);
+    console.log("first---------->existing", existing);
     if (existing) response = { operation: "find", result: existing };
     ////////////////////////// Error Response ///////////////////////////////////////////
     if (response === undefined)
@@ -287,7 +290,7 @@ async function blogEdit(event, context, callback) {
       }),
     });
   } catch (error) {
-    console.log('first-------->', error)
+    console.log("first-------->", error);
     callback(null, {
       statusCode: error.statusCode || 300,
       headers: {
@@ -667,6 +670,44 @@ async function createUpdateportfolio(event, context, callback) {
   } catch (error) {
     callback(null, {
       statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+async function portfolioEdit(event, context, callback) {
+  context.callbackWaitsForEmptyEventLoop = false;
+  try {
+    console.log("first--------->event", event.queryStringParameters);
+    await connectToDB();
+    const { id } = event.queryStringParameters;
+    console.log("data----------->", id);
+    // return
+    let response;
+    // const reqData = clone(data);
+    ///////////////////////// DB Operation //////////////////////////////////////////////
+    const existing = await portfolios.findById(mongoose.Types.ObjectId(id)).lean();
+    console.log("first---------->existing", existing);
+    if (existing) response = { operation: "find", result: existing };
+    ////////////////////////// Error Response ///////////////////////////////////////////
+    if (response === undefined)
+      response = { operation: "failed", message: "Something Went Wrong" };
+    ///////////////////////////////// Response Send /////////////////////////////////////////
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        response: response.result,
+      }),
+    });
+  } catch (error) {
+    console.log("first-------->", error);
+    callback(null, {
+      statusCode: error.statusCode || 300,
       headers: {
         "Content-Type": "text/plain",
       },
