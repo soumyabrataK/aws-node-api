@@ -1143,7 +1143,7 @@ async function fetchBlogsByCategories(event, context, callback) {
 async function fetchServices(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const params = event.queryStringParameters;
-  const { cat, sort, type } = event.queryStringParameters;
+  const { sort, type } = event.queryStringParameters;
   let sortVal = { priority: 1 }
 
   console.log("params==============>", params);
