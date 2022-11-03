@@ -61,7 +61,7 @@ functions:
           cors: true
 
   firemail:
-    handler: sendemail.firemail
+    handler: firemail.api
     memorySize: 128
     timeout: 30
     events:
