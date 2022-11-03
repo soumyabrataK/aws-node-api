@@ -17,9 +17,9 @@ let headers = {
 module.exports.api = (event, context, callback) => {
   context.callbackWaitsForEmptyEventLoop = false;
   console.log("endpoint hitted", event.pathParameters);
-  switch (event.pathParameters.path) {
-    case "visited-page":
-      visitedPage(event, context, callback);
-      break;
-  }
+  // switch (event.pathParameters.path) {
+  //   case "visited-page":
+  //     visitedPage(event, context, callback);
+  //     break;
+  // }
 };
