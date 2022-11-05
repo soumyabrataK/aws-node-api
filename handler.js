@@ -689,7 +689,9 @@ async function portfolioEdit(event, context, callback) {
     let response;
     // const reqData = clone(data);
     ///////////////////////// DB Operation //////////////////////////////////////////////
-    const existing = await portfolios.findById(mongoose.Types.ObjectId(id)).lean();
+    const existing = await portfolios
+      .findById(mongoose.Types.ObjectId(id))
+      .lean();
     console.log("first---------->existing", existing);
     if (existing) response = { operation: "find", result: existing };
     ////////////////////////// Error Response ///////////////////////////////////////////
@@ -817,8 +819,8 @@ async function fetchServiceCategories(event, context, callback) {
 //////////////////////////////////////// fetchBlogDetails //////////////////////////////////////
 async function fetchBlogDetails(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { id } = event.queryStringParameters;
-  console.log("id==============>", id);
+  const params = event.queryStringParameters;
+  console.log("params.id==============>", params.id);
 
   try {
     await connectToDB();
@@ -826,16 +828,16 @@ async function fetchBlogDetails(event, context, callback) {
     let results = await async.parallel({
       blogData: async () => {
         let blogData;
-        if (id)
-          blogData = await blogs.find({ _id: mongoose.Types.ObjectId(id) });
+        if (params.id)
+          blogData = await blogs.find({ _id: mongoose.Types.ObjectId(params.id) });
         else blogData = await blogs.find().sort({ priority: 1 }).limit(1);
         return blogData;
       },
       recentBlogs: async () => {
         let recentBlogs;
-        if (id)
+        if (params.id)
           recentBlogs = await blogs
-            .find({ _id: { $ne: mongoose.Types.ObjectId(id) } })
+            .find({ _id: { $ne: mongoose.Types.ObjectId(params.id) } })
             .sort({ date: -1 })
             .limit(5);
         else recentBlogs = await blogs.find({}).sort({ date: -1 }).limit(5);
@@ -878,20 +880,24 @@ async function fetchBlogDetails(event, context, callback) {
 ////////////////////////////////////// fetchPortfoliosByCategories /////////////////////////////////
 async function fetchPortfoliosByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { cat, sort, type } = event.queryStringParameters;
-  console.log("cat==============>", cat);
-  let sortVal = { priority: 1 }
+  const params = event.queryStringParameters;
+  console.log("cat==============>", params.cat);
+  let sortVal = { priority: 1 };
 
   try {
     await connectToDB();
-    if (sort) {
-      type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
+    if (params && params.sort) {
+      params.type === "asc"
+        ? (sortVal = { [params.sort]: 1 })
+        : (sortVal = { [params.sort]: -1 });
     }
 
-    const portfolios = await portfolio.find({
-      category: { $regex: cat, $options: "i" },
-      status: 1
-    }).sort(sortVal);
+    const portfolios = await portfolio
+      .find({
+        category: { $regex: params.cat ? params.cat : "", $options: "i" },
+        status: 1,
+      })
+      .sort(sortVal);
 
     callback(null, {
       headers: headers,
@@ -1143,22 +1149,26 @@ function serviceListingCount(event, context, callback) {
 
 async function fetchBlogsByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
-  const { cat, sort, type } = event.queryStringParameters;
-  let sortVal = { priority: 1 }
+  const params = event.queryStringParameters;
+  let sortVal = { priority: 1 };
 
-  console.log("cat==============>", cat);
+  console.log("cat==============>", params.cat);
 
   try {
     await connectToDB();
     let category = "";
-    if (cat) category = cat;
-    if (sort) {
-      type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
+    if (params.cat) category = params.cat;
+    if (params && params.sort) {
+      params.type === "asc"
+        ? (sortVal = { [params.sort]: 1 })
+        : (sortVal = { [params.sort]: -1 });
     }
-    const blogsData = await blogs.find({
-      category: { $regex: cat, $options: "i" },
-      status: 1
-    }).sort(sortVal);
+    const blogsData = await blogs
+      .find({
+        category: { $regex: params.cat, $options: "i" },
+        status: 1,
+      })
+      .sort(sortVal);
 
     callback(null, {
       headers: headers,
@@ -1184,8 +1194,7 @@ async function fetchBlogsByCategories(event, context, callback) {
 async function fetchServices(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const params = event.queryStringParameters;
-  const { sort, type } = event.queryStringParameters;
-  let sortVal = { priority: 1 }
+  let sortVal = { priority: 1 };
 
   console.log("params==============>", params);
 
@@ -1196,14 +1205,20 @@ async function fetchServices(event, context, callback) {
   if (params && params.limit && Number(params.limit))
     limit = Number(params.limit);
 
-  if (sort) {
-    type === "asc" ? sortVal = { [sort]: 1 } : sortVal = { [sort]: -1 }
+  if (params && params.sort) {
+    params.type === "asc"
+      ? (sortVal = { [params.sort]: 1 })
+      : (sortVal = { [params.sort]: -1 });
   }
 
   try {
     await connectToDB();
 
-    const serviceData = await services.find({ status: 1 }).sort(sortVal).skip(skip).limit(limit);
+    const serviceData = await services
+      .find({ status: 1 })
+      .sort(sortVal)
+      .skip(skip)
+      .limit(limit);
 
     callback(null, {
       headers: headers,
