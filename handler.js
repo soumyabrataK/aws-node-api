@@ -119,6 +119,9 @@ module.exports.api = (event, context, callback) => {
     case "fetch-services":
       fetchServices(event, context, callback);
       break;
+    case "submit-feedback":
+      submitFeedback(event, context, callback);
+      break;
   }
 };
 
@@ -1362,4 +1365,40 @@ function quoteListingCount(event, context, callback) {
         })
       );
   });
+}
+
+async function submitFeedback(event, context, callback) {
+  try {
+    const req = JSON.parse(event.body);
+    if (!req.blog_id) throw "Blog Id Required"
+    const blogId = req.blog_id;
+    delete req.blog_id;
+    delete req.formId;
+
+    await connectToDB();
+
+    const response = await blogs.updateOne({ _id: mongoose.Types.ObjectId(blogId) }, { $push: { feedback: { ...req, createdon_datetime: moment().valueOf() } } })
+
+    if (response.acknowledged === true && response.matchedCount > 0 && response.modifiedCount > 0) {
+      callback(null, {
+        headers: headers,
+        statusCode: 200,
+        body: JSON.stringify({
+          status: "success",
+          results: response
+        }),
+      });
+    } else throw "Feedback Not Submitted. Please Try Again :("
+
+
+  } catch (error) {
+    console.log("error================>", error);
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
 }

@@ -42,6 +42,10 @@ const blogs = new mongoose.Schema({
     type: Number,
     default: 1
   },
+  feedback: {
+    type: Array,
+    default: []
+  },
   createdon_datetime: {
     type: Number,
     default: Math.round((new Date()).getTime())
