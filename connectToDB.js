@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-require("dotenv");
 mongoose.Promise = global.Promise;
 let isConnected;
 let uri = "";

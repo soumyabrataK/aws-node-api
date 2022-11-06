@@ -1,6 +1,5 @@
 "use strict";
 
-require("dotenv").config({ path: "secrets.json" });
 const mongoose = require("mongoose"); // this code is used for connecting to mongoose db.
 const connectToDB = require("./connectToDB");
 
