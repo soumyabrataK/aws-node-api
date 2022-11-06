@@ -60,15 +60,5 @@ functions:
           method: any
           cors: true
 
-  firemail:
-    handler: firemail.api
-    memorySize: 128
-    timeout: 30
-    events:
-      - http:
-          path: firemail
-          method: any
-          cors: true
-
 plugins:
   - serverless-offline

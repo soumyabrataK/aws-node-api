@@ -21,6 +21,7 @@ const moment = require("moment/moment");
 const get_quote = require("./collections/get_quote");
 const portfolio = require("./collections/portfolio");
 const services = require("./collections/services");
+const mail_datas = require("./collections/mail_datas");
 
 let headers = {
   // headers let the client and the server pass additional information with an HTTP request or response.
@@ -121,6 +122,12 @@ module.exports.api = (event, context, callback) => {
       break;
     case "submit-feedback":
       submitFeedback(event, context, callback);
+      break;
+    case "fetch-mail-data":
+      fetchMailData(event, context, callback);
+      break;
+    case "update-mail-status":
+      updateMailStatus(event, context, callback);
       break;
   }
 };
@@ -1391,6 +1398,64 @@ async function submitFeedback(event, context, callback) {
     } else throw "Feedback Not Submitted. Please Try Again :("
 
 
+  } catch (error) {
+    console.log("error================>", error);
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+async function fetchMailData(event, context, callback) {
+  let limit = 0;
+  try {
+    if (event.queryStringParameters && event.queryStringParameters.limit) limit = event.queryStringParameters.limit;
+
+    await connectToDB();
+
+    const response = await mail_datas.find({ email_sent: 0 }).limit(limit)
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        results: response
+      }),
+    });
+  } catch (error) {
+    console.log("error================>", error);
+    callback(null, {
+      statusCode: error.statusCode || 500,
+      headers: {
+        "Content-Type": "text/plain",
+      },
+      body: "Connection problem" + String(error),
+    });
+  }
+}
+
+async function updateMailStatus(event, context, callback) {
+  let id;
+  try {
+    if (event.queryStringParameters && event.queryStringParameters.id) id = event.queryStringParameters.id;
+
+    if (!id) throw "Id required to update mail status";
+
+    await connectToDB();
+
+    const response = await mail_datas.updateOne({ _id: mongoose.Types.ObjectId(id) }, { $inc: { email_sent: 1 } })
+    callback(null, {
+      headers: headers,
+      statusCode: 200,
+      body: JSON.stringify({
+        status: "success",
+        results: response
+      }),
+    });
   } catch (error) {
     console.log("error================>", error);
     callback(null, {
