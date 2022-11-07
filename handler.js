@@ -10,7 +10,6 @@ const fs = require("fs"); // The fs module provides a lot of very useful functio
 let jwt = require("jsonwebtoken"); // this module is a open standard used to share security information between two parties- client and server.
 const crypto = require("crypto"); //The crypto module is mostly useful as a tool for implementing cryptographic protocols such as TLS and https.
 const events = require("events"); // Node.js has an event-driven architecture which can perform asynchronous tasks.
-let nodeMailer = require("nodemailer"); //Nodemailer is a module for Node.js applications to allow easy as cake email sending.
 const connectToDB = require("./connectToDB");
 const blogs = require("./collections/blogs");
 const users = require("./collections/user-schema");
@@ -892,7 +891,7 @@ async function fetchPortfoliosByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const params = event.queryStringParameters;
   console.log("cat==============>", params.cat);
-  let sortVal = { priority: 1 };
+  let sortVal = { priority: 1, updated_datetime: -1 };
 
   try {
     await connectToDB();
@@ -1160,7 +1159,7 @@ function serviceListingCount(event, context, callback) {
 async function fetchBlogsByCategories(event, context, callback) {
   context.callbackWaitsForEmptyEventLoop = false;
   const params = event.queryStringParameters;
-  let sortVal = { priority: 1 };
+  let sortVal = { priority: 1, updated_datetime: -1 };
 
   console.log("cat==============>", params.cat);
 
