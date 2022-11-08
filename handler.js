@@ -1,15 +1,9 @@
 "use strict";
-
-require("dotenv").config({ path: "secrets.json" });
 // already installed in code
 const AWS = require("aws-sdk");
 let mongoose = require("mongoose"); // this code is used for connecting to mongoose db.
-let async = require("async"); // Async is a utility module which provides straight-forward, powerful functions for working with asynchronous JavaScript.
-const path = require("path"); //This module provides path. sep which provides the path segment separator
-const fs = require("fs"); // The fs module provides a lot of very useful functionality to access and interact with the file system
-let jwt = require("jsonwebtoken"); // this module is a open standard used to share security information between two parties- client and server.
+let async = require("async"); // Async is a utility module which provides straight-forward, powerful functions for working with asynchronous JavaScript
 const crypto = require("crypto"); //The crypto module is mostly useful as a tool for implementing cryptographic protocols such as TLS and https.
-const events = require("events"); // Node.js has an event-driven architecture which can perform asynchronous tasks.
 const connectToDB = require("./connectToDB");
 const blogs = require("./collections/blogs");
 const users = require("./collections/user-schema");
